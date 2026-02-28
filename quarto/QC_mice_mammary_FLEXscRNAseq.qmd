@@ -1,0 +1,13 @@
+---
+title: "QC Mouse Mammary gland FLEX scRNAseq Data"
+format: html
+editor: visual
+---
+
+## QC Cellbender data
+
+The 4-timepoint mouse mammary gland scRNAseq data was re-processed using [CellBender](https://github.com/broadinstitute/CellBender), which removes background noise attributed to ambient RNA and barcode swapping using a deep-learning algorithm to call cell-containing droplets.
+
+The data were also re-processed with [Cell Ranger v.9.0.0](https://www.10xgenomics.com/support/software/cell-ranger/latest/release-notes/cr-release-notes), since the 3-week time-point was originally processed with v.7.1.0; and the 10-week, 7-month, and 18-month data were processed with v.8.0.1.
+
+Here we'll load in our data and continue cleaning it up with [EmptyDrops](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-019-1662-y#Ack1)
