@@ -1,14 +1,19 @@
-# Lets not upload any data, only scripts
+# Lets not upload any data or figures, only scripts, configs and notebooks.
 
 
 # 1. Ignore EVERYTHING
 *
 
 # 2. Allow Git to look inside all directories (CRITICAL)
-!*/
+#!*/
 
-# 2.1 but not these directories
-*marker_genes/
+#2.1 Allow Git to look inside only these directories
+*scripts/
+*configs/
+*notebooks/
+
+# 2.2 but not these directories
+#*marker_genes/
 
 # 3. Un-ignore specific file types
 !*.py
@@ -17,7 +22,10 @@
 !*.qmd
 !*.md
 !*.html
+!*.sh
+!*.yaml
 
 # 4. Always un-ignore the config files
 !.gitignore
 !README.md
+!sample_sheet.csv
