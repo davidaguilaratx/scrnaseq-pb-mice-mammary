@@ -1,0 +1,20 @@
+# QC Pipeline Configuration
+
+analysis: 'cellbender_analysis'
+threads: 4
+random_seed: 281330800
+
+emptydrops:
+  default:
+    lower_umi_bound: 100
+    niters: 10000
+    fdr_cutoff: 0.01
+    
+  week3: # Overrides just for week 3
+    lower_umi_bound: 75
+  month7: # Overrides just for month 7
+    lower_umi_bound: 90
+
+scdblfinder:
+  default:
+    dbr_per1k: 0.008
