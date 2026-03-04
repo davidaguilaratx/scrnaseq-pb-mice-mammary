@@ -2,15 +2,15 @@
 
 
 # 1. Ignore EVERYTHING
-*
+/*
 
 # 2. Allow Git to look inside all directories (CRITICAL)
-#!*/
+# !*/
 
-#2.1 Allow Git to look inside only these directories
-!*scripts/*
-!*configs/*
-!*notebooks/*
+#2.1 Allow Git to look inside only these directories and their subdirectories
+!scripts/
+!configs/
+!notebooks/
 
 # 2.2 but not these directories
 #*marker_genes/
@@ -25,7 +25,7 @@
 !*.sh
 !*.yaml
 
-# 4. Always un-ignore the config files
+# 4. Always un-ignore the config files, .gitignore, and README.md
 !.gitignore
 !README.md
 !sample_sheet.csv
