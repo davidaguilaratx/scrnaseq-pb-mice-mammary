@@ -31,7 +31,8 @@ set.seed(2024)
 # selected_timepoint <- 'month7'
 # selected_timepoint <- 'month18'
 
-de_directory <- "C:/Users/david/Documents/Research/PhD/scRNAseq/analysis/3_weeks/stats_rerun/DESeq2/results/"
+# de_directory <- "C:/Users/david/Documents/Research/PhD/scRNAseq/analysis/3_weeks/stats_rerun/DESeq2/results/"
+de_directory <- "C:/Users/david/Documents/Research/PhD/scRNAseq/analysis_old/integrated/FPR_0.0_MAD/stats/DESeq2/epithelial/results/"
 
 # directory to save figures and results in ----
 
@@ -39,10 +40,14 @@ de_directory <- "C:/Users/david/Documents/Research/PhD/scRNAseq/analysis/3_weeks
 analysis = 'cellbender_analysis'
 # analysis = 'cellranger.v.9.0.0_analys
 
-data_dir =  "C:/Users/david/Documents/Research/PhD/scRNAseq/analysis/3_weeks/stats_rerun/DESeq2/GSEA/data/"
+
+
+
 
 directory_figs = "C:/Users/david/Documents/Research/PhD/scRNAseq/analysis/3_weeks/stats_rerun/DESeq2/GSEA/fGSEA/figures/"
 directory_results = "C:/Users/david/Documents/Research/PhD/scRNAseq/analysis/3_weeks/stats_rerun/DESeq2/GSEA/fGSEA/results/"
+
+
 
 dirs = c(data_dir, directory_figs, directory_results)
 
@@ -60,6 +65,13 @@ de_results = list.files(path=de_directory, pattern='all_genes')
 ### List of cell types (replace with your actual cell types)
 celltypes = sub(pattern='_condition.*',replacement='',x=de_results)
 celltypes
+
+### Timepoint embedded in filename between "ctrl_" and "_all"
+### e.g. Luminal.AV_condition_pb_vs_ctrl_wk10_all_genes_deseq2.csv -> "wk10"
+timepoints = sub(pattern = '.*ctrl_(wk\\d+|mn\\d+)_all.*',
+                 replacement = '\\1',
+                 x = de_results)
+timepoints
 
 
 
@@ -100,7 +112,8 @@ res_tbl_bcell = read.csv(paste0(de_directory,'B cells_condition_pb_vs_ctrl_all_g
 # write.csv(gene_id, 'annotation/ensembl_and_entrez_gene_ids_and_human_homologs.csv')
 
 # load fetched gene IDs and human homologs ----
-gene_id = read.csv('c:/Users/david/Documents/Research/PhD/scRNAseq/analysis/3_weeks/annotation/ensembl_and_entrez_gene_ids_and_human_homologs.csv')
+# gene_id = read.csv('c:/Users/david/Documents/Research/PhD/scRNAseq/analysis/3_weeks/annotation/ensembl_and_entrez_gene_ids_and_human_homologs.csv')
+gene_id = read.csv('c:/Users/david/Documents/Research/PhD/scRNAseq/analysis/marker_genes/ensembl_and_entrez_gene_ids_and_human_homologs.csv')
 
 # test = left_join(res_tbl_adip, msigdbr::msigdbr(species='Mus musculus',category='H'),
                                                # by=join_by('gene'=='gene_symbol'))
@@ -142,33 +155,35 @@ to_genelist = function(res_tbl, species_human=F) {
 }
 
 ## tidy up and sort fGSEA results by NES and save to csv
-tidysave_fgsea = function(fgseaRes, pathways, pathway_name, celltype, simple_tf=F, 
-                          directory=directory_results) {
-  
+tidysave_fgsea = function(fgseaRes, pathways, pathway_name, celltype,
+                          timepoint = NULL, simple_tf = F,
+                          directory = directory_results) {
+
   if (!dir.exists(directory)) { dir.create(directory,
                                            recursive=TRUE)}
-  
+
   fgseaResTidy = fgseaRes %>%
     as_tibble() %>%
     arrange(desc(NES)) %>%
     mutate(leadingEdge2 = leadingEdge) %>% # for saving to csv
-    rowwise() %>% 
+    rowwise() %>%
     mutate_at(c('leadingEdge2'), ~paste(unlist(.), collapse = ',')) %>%
     dplyr::select(!leadingEdge) %>%
     rename(leadingEdge = leadingEdge2)
-  
-  # save to csv, omit leadingEdge col, located at index 8,
-  # from saved file since it contains lists. 
-  # write.csv(x=fgseaResTidy,
-  #           file = paste0(directory,celltype,ifelse(simple_tf,'_simple','_multilevel'),
-  #                         '_fGSEA_NES_', deparse(substitute(pathways)),'.csv'),
-  #           row.names=FALSE)
-  
-  write.csv(x=fgseaResTidy,
-            file = paste0(directory,celltype,ifelse(simple_tf,'_simple','_multilevel'),
-                          '_fGSEA_NES_', pathway_name,'.csv'),
-            row.names=FALSE)
-  
+
+  # filename: <celltype>_<timepoint>_<pathway_name>_fgseaRes.csv when timepoint
+  # is supplied; otherwise fall back to the legacy multilevel/simple format.
+  if (!is.null(timepoint)) {
+    out_csv <- paste0(directory, celltype, '_', timepoint, '_', pathway_name,
+                      '_fgseaRes.csv')
+  } else {
+    out_csv <- paste0(directory, celltype,
+                      ifelse(simple_tf, '_simple', '_multilevel'),
+                      '_fGSEA_NES_', pathway_name, '.csv')
+  }
+
+  write.csv(x = fgseaResTidy, file = out_csv, row.names = FALSE)
+
   return(fgseaResTidy)
 }
 
@@ -198,7 +213,8 @@ wrap_pathway_names <- function(pathways, width = 50) {
 
 ## function to plot and save normalized enrichment scores (NES) horizontal barplot ----
 plot_fgsea_nes = function(fgsea_nes, celltype, pathways, pathway_name,
-                          padj_cutoff=0.25, simple_tf=F, directory=directory_figs) {
+                          timepoint = NULL, padj_cutoff = 0.25,
+                          simple_tf = F, directory = directory_figs) {
   
   
   
@@ -353,22 +369,20 @@ plot_fgsea_nes = function(fgsea_nes, celltype, pathways, pathway_name,
     width <- width + 2  # More width for larger text
   }
   
-  # ggsave(paste0(directory,celltype,ifelse(simple_tf,'_simple','_multilevel'),
-  #               '_fGSEA_NES_',ifelse(is.symbol(substitute(pathways)),
-  #                                              deparse(substitute(pathways)),
-  #                                              pathways),'_hbarplot.png'),
-  #        plot=p,dpi=320,width=10,height=20)
-  
-  ggsave(paste0(directory,celltype,ifelse(simple_tf,'_simple','_multilevel'),
-                '_fGSEA_NES_', pathway_name,'_hbarplot.png'),
-         plot=p,dpi=320,width=width,height=height)
-  
+  # filename: <celltype>_<timepoint>_<multilevel|simple>_fGSEA_NES_<pathway_name>_hbarplot.png
+  tp_tag <- if (!is.null(timepoint)) paste0('_', timepoint) else ''
+  ggsave(paste0(directory, celltype, tp_tag,
+                ifelse(simple_tf, '_simple', '_multilevel'),
+                '_fGSEA_NES_', pathway_name, '_hbarplot.png'),
+         plot = p, dpi = 320, width = width, height = height)
+
   return(p)
-}  
+}
 
 ## function to plot and save normalized enrichment scores (NES) as dot plot----
-plot_fgsea_nes_dotplot = function(fgsea_nes, celltype, pathways,pathway_name,
-                                  padj_cutoff=0.25, simple_tf=F, directory=directory_figs) {
+plot_fgsea_nes_dotplot = function(fgsea_nes, celltype, pathways, pathway_name,
+                                  timepoint = NULL, padj_cutoff = 0.25,
+                                  simple_tf = F, directory = directory_figs) {
 
   
   
@@ -541,17 +555,13 @@ plot_fgsea_nes_dotplot = function(fgsea_nes, celltype, pathways,pathway_name,
     width <- width + 2  # More width for larger text
   }
   
-  # ggsave(paste0(directory,celltype,ifelse(simple_tf,'_simple','_multilevel'),
-  #               '_fGSEA_NES_',ifelse(is.symbol(substitute(pathways)),
-  #                                              deparse(substitute(pathways)),
-  #                                              pathways),'_dotplot.png'),
-  #        plot=p,dpi=320,width=10,height=20)
-  
-  ggsave(paste0(directory,celltype,ifelse(simple_tf,'_simple','_multilevel'),
-                '_fGSEA_NES_', pathway_name,'_dotplot.png'),
-         plot=p,dpi=320,width=width,height=height)
+  # filename: <celltype>_<timepoint>_<multilevel|simple>_fGSEA_NES_<pathway_name>_dotplot.png
+  tp_tag <- if (!is.null(timepoint)) paste0('_', timepoint) else ''
+  ggsave(paste0(directory, celltype, tp_tag,
+                ifelse(simple_tf, '_simple', '_multilevel'),
+                '_fGSEA_NES_', pathway_name, '_dotplot.png'),
+         plot = p, dpi = 320, width = width, height = height)
 
-  
   return(p)
 }
 
@@ -669,7 +679,7 @@ mm_collections = list(
 # fGSEA on all celltype differential expression results ----
 # for (i in 1:length(de_results)) {
 # for (i in c(2,3,8,10,11)) {
-for (i in c(10,11)) {  
+for (i in c(10,11)) {  # only run on cells at index 10 and 11
   res_tbl = read.csv(paste0(de_directory,de_results[i]))
   res_tbl = get_ids_and_homologs(res_tbl)
   
@@ -2169,4 +2179,164 @@ plot_fgsea_nes_dotplot(fgsea_nes=endo.fgsea.hallmarks.mm,
                        pathways=hallmarks_mm,
                        celltype='Endothelial',
                        padj_cutoff=0.25)
+
+
+#epithelial cells fGSEA ----
+
+# directories ----
+epi_de_directory = "C:/Users/david/Documents/Research/PhD/scRNAseq/analysis_old/integrated/cellbender_analysis/FPR_0.0_MAD/stats/DESeq2/epithelial/results/"
+epi_base_output  = "C:/Users/david/Documents/Research/PhD/scRNAseq/analysis_old/integrated/cellbender_analysis/FPR_0.0_MAD/stats/DESeq2/epithelial/GSEA/fGSEA/"
+
+# grab all_genes DE result file names and extract celltypes (text before first _)
+epi_de_results = list.files(path=epi_de_directory, pattern='all_genes')
+epi_celltypes  = sub(pattern='_.*', replacement='', x=epi_de_results)
+
+# pathway indices to run from mm_collections:
+# 1 hallmarks_mm, 2 gobp_mm, 3 gomf_mm, 4 gocc_mm, 5 reactome_mm, 6 kegg_mm, 7 wiki_mm
+epi_pathway_indices = 1:7
+
+# fGSEA on all epithelial DE results ----
+for (i in seq_along(epi_de_results)) {
+  res_tbl  = read.csv(paste0(epi_de_directory, epi_de_results[i]))
+  res_tbl  = get_ids_and_homologs(res_tbl)
+  genelist = to_genelist(res_tbl)
+
+  # celltype subfolder + per-run file prefix (preserves timepoint in filenames)
+  epi_directory_results = paste0(epi_base_output, epi_celltypes[i], '/results/')
+  epi_directory_figs    = paste0(epi_base_output, epi_celltypes[i], '/figures/')
+  for (d in c(epi_directory_results, epi_directory_figs)) {
+    if (!dir.exists(d)) dir.create(d, recursive=TRUE)
+  }
+  run_id = sub(pattern='\\.csv$', replacement='', x=epi_de_results[i])
+
+  for (k in epi_pathway_indices) {
+    gc()
+    cat('\n\n','Setting up pathways for ', run_id,' using ', pathway_names[k], ' pathways...\n\n')
+
+    pathways     = mm_collections[[k]]
+    pathway_name = paste0(msigdb_species[1], '_', names(mm_collections)[k])
+
+    cat('\n\n','Running fGSEA for ', run_id,' using ', pathway_name, ' pathways...\n\n')
+
+    fgseaRes = fgsea(pathways=pathways,
+                     stats=genelist,
+                     sampleSize=101,
+                     minSize=10,
+                     maxSize=1000,
+                     eps=1e-50,
+                     nproc=6)
+    gc()
+
+    ### tidy fGSEA results, sort by NES, and save to csv
+    tidysave_fgsea(fgseaRes,
+                   pathways=pathway_name,
+                   pathway_name=pathway_name,
+                   celltype=run_id,
+                   directory=epi_directory_results)
+
+    # select independent pathways to get rid of redundancy
+    cat('collapsing pathways for ', run_id,' ',pathway_name,
+        'if not part of 50 hallmarks...\n\n')
+
+    collapsedPathways = collapsePathways(fgseaRes[order(pval)][padj < 0.1],
+                                         pathways[names(pathways) %in% fgseaRes$pathway],
+                                         genelist,
+                                         pval.threshold=0.05,
+                                         nperm=1000)
+
+    qs_save(collapsedPathways,
+            paste0(epi_directory_results, run_id, '_', pathway_name, '_collapsedpathways.qs'),
+            nthreads=nthreads)
+
+    if (length(collapsedPathways$mainPathways) > 0) {
+      main_df <- data.frame(
+        pathway = collapsedPathways$mainPathways,
+        parent  = NA
+      )
+
+      parent_df <- data.frame(
+        pathway = names(collapsedPathways$parentPathways),
+        parent  = collapsedPathways$parentPathways
+      )
+
+      combined_df <- rbind(main_df, parent_df)
+
+      write.csv(combined_df,
+                paste0(epi_directory_results, run_id, '_', pathway_name, '_collapsedpathways.csv'))
+
+      edges <- data.frame(
+        from = collapsedPathways$parentPathways,
+        to   = names(collapsedPathways$parentPathways)
+      )
+      edges <- edges[!is.na(edges$from), ]
+
+      g <- graph_from_data_frame(edges, directed = TRUE)
+
+      png(paste0(epi_directory_figs, '_', run_id, '_', pathway_name, '_collapsedPathways_hierarchy.png'),
+          unit='in', height=15, width=15, res=180)
+      plot(g,
+           layout = layout_with_fr(g),
+           vertex.size = 6,
+           vertex.label.dist = 0.7,
+           vertex.label.cex = 0.7,
+           vertex.label.degree = -pi/4,
+           edge.arrow.size = 0.5,
+           margin = c(0.2, 0.2, 0.2, 0.2))
+      dev.off()
+
+      if (names(mm_collections)[k] == 'hallmarks_mm') {
+        mainPathways = names(pathways)
+      } else {
+        mainPathways = fgseaRes[pathway %in% collapsedPathways$mainPathways][order(-NES), pathway]
+      }
+
+      saveRDS(collapsedPathways,
+              paste0(epi_directory_results, run_id, '_', pathway_name, '_collapsedPathways.rds'))
+    } else {
+      mainPathways = NULL
+    }
+
+    padj_cutoff = ifelse(sum(fgseaRes$padj < 0.25) > 70, 0.1, 0.25)
+
+    ### plot NES results
+    cat('plotting NES barplot for', run_id,'using', pathway_name,'pathways p.adj cuttoff of:', padj_cutoff,'...\n\n')
+    if ((length(mainPathways) != 0) & (sum(fgseaRes$padj < 0.25) > 50)) {
+      plot_fgsea_nes(fgsea_nes = fgseaRes[pathway %in% mainPathways,],
+                     pathways  = pathways,
+                     pathway_name = pathway_name,
+                     celltype  = run_id,
+                     padj_cutoff = padj_cutoff,
+                     directory = epi_directory_figs)
+    } else {
+      plot_fgsea_nes(fgsea_nes = fgseaRes,
+                     pathways  = pathways,
+                     pathway_name = pathway_name,
+                     celltype  = run_id,
+                     padj_cutoff = padj_cutoff,
+                     directory = epi_directory_figs)
+    }
+
+    cat('plotting NES dotplot for ', run_id,' using ', pathway_name,' pathways p.adj cuttoff of: ', padj_cutoff,'...\n\n')
+    if ((length(mainPathways) != 0) & (sum(fgseaRes$padj < 0.25) > 50)) {
+      plot_fgsea_nes_dotplot(fgsea_nes = fgseaRes[pathway %in% mainPathways,],
+                             pathways  = pathways,
+                             pathway_name = pathway_name,
+                             celltype  = run_id,
+                             padj_cutoff = padj_cutoff,
+                             directory = epi_directory_figs)
+    } else {
+      plot_fgsea_nes_dotplot(fgsea_nes = fgseaRes,
+                             pathways  = pathways,
+                             pathway_name = pathway_name,
+                             celltype  = run_id,
+                             padj_cutoff = padj_cutoff,
+                             directory = epi_directory_figs)
+    }
+
+    rm(fgseaRes, padj_cutoff, collapsedPathways, mainPathways)
+
+    cat('\nfinished ', pathway_name,' for ', run_id,'\n')
+  }
+}
+
 

@@ -24,8 +24,10 @@
 !*.html
 !*.sh
 !*.yaml
+!*.csv
 
 # 4. Always un-ignore the config files, .gitignore, and README.md
 !.gitignore
+!.gitattributes
 !README.md
-!sample_sheet.csv
+!LICENSE

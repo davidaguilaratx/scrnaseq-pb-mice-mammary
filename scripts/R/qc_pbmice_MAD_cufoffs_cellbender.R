@@ -1167,6 +1167,8 @@ for (selected_timepoint in names(timepoints)) {
   #' @param prefix Prefix for output files (optional)
   #' @param hard_cutoffs Named list of hard cutoffs to display (optional)
   #' @return List threshold data frames for each metric
+  #' Example usage:
+  #' metrics_to_analyze <- c("nCount_RNA", "nFeature_RNA", "percent.mt")
   analyze_mad_metrics <- function(seurat_obj, 
                                   metrics, 
                                   output_dir = NULL,
@@ -1211,8 +1213,7 @@ for (selected_timepoint in names(timepoints)) {
     return(results)
   }
   
-  # Example usage:
-  # metrics_to_analyze <- c("nCount_RNA", "nFeature_RNA", "percent.mt")
+  
   
   norm_log1p = function(seurat_obj) {
     seurat_obj$log1p_nCount_RNA = log1p(seurat_obj$nCount_RNA)
@@ -1893,7 +1894,7 @@ for (selected_timepoint in names(timepoints)) {
                        # clusters = 'clusters',
                        dbr.sd = 1, # lets the dbr be set emperically, makes setting dbr irrelevant
                        dbr.per1k = 0.008, # default is 0.008
-                       BPPARAM=SnowParam(4, RNGseed=2024))
+                       BPPARAM=SnowParam(workers=4, RNGseed=2024))
   # dbr is 0.8% per 1000 cells according to 10x reps (0.08% = 0.0008)
   # which, translates to 0.05% for a 16-plex experiment according to 
   # Howitt etal, 2024, DOI: 10.1101/2024.10.03.616596

@@ -1,0 +1,18 @@
+# Normalize all text files to LF in the repo.
+# Windows checkouts stay LF too — modern editors handle it, and HPC scripts won't break.
+* text=auto eol=lf
+
+# Be explicit for the file types in this project
+*.sh    text eol=lf
+*.R     text eol=lf
+*.r     text eol=lf
+*.Rmd   text eol=lf
+*.py    text eol=lf
+*.ipynb text eol=lf
+*.csv   text eol=lf
+*.tsv   text eol=lf
+*.yaml  text eol=lf
+*.yml   text eol=lf
+*.json  text eol=lf
+*.md    text eol=lf
+*.txt   text eol=lf

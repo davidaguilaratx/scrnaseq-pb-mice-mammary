@@ -1,8 +1,9 @@
 library(Seurat)
 library(SeuratObject)
 library(sctransform)
-library(patchwork)
-library(cowplot)
+library(harmony)
+# library(patchwork)
+# library(cowplot)
 library(tidyverse)
 # library(Matrix)
 library(ggthemes)
@@ -13,83 +14,49 @@ library(scales)
 library(glmGamPoi)
 # library(metap)
 # library(RCurl)
-library(Polychrome)
-library(pheatmap)
+# library(Polychrome)
+# library(pheatmap)
 library(presto)
 library(qs2) # for fast data saving/loading
+library(zeallot) # for unpacking multiple values from functions
+library(openai)
+library(GPTCelltype)
+library(CyteTypeR)
 
+
+source(here::here("scripts/R/utils.R"))
+source(here::here("scripts/R/plot_utils.R"))
 
 # set seed
-set.seed(2024)
+seed <- 2024
+set.seed(seed)
 
-# sessionInfo()
+c(nthreads, bp_param) %<-% configure_parallelism(rng_seed = seed)
 
 # read in data ----
-# Set timepoint to analyze for this script
-selected_timepoint <- 'week3'
-selected_timepoint <- 'week10'
-selected_timepoint <- 'month7'
-selected_timepoint <- 'month18'
-
-
 # directories for saving
-timepoint_dirs <- list(
-  "week3" = list(
-    fig_dir = "C:/Users/david/Documents/Research/PhD/scRNAseq/analysis/3_weeks/cellbender_analysis/FPR_0.0_MAD/qc/",
-    data_dir = "C:/Users/david/Documents/Research/PhD/scRNAseq/analysis/3_weeks/cellbender_analysis/FPR_0.0_MAD/data/",
-    annot_dir = "C:/Users/david/Documents/Research/PhD/scRNAseq/analysis/3_weeks/cellbender_analysis/FPR_0.0_MAD/annotation/"
-  ),
-  "week10" = list(
-    fig_dir = "C:/Users/david/Documents/Research/PhD/scRNAseq/analysis/10_weeks/cellbender_analysis/FPR_0.0_MAD/qc/",
-    data_dir = "C:/Users/david/Documents/Research/PhD/scRNAseq/analysis/10_weeks/cellbender_analysis/FPR_0.0_MAD/data/",
-    annot_dir = "C:/Users/david/Documents/Research/PhD/scRNAseq/analysis/10_weeks/cellbender_analysis/FPR_0.0_MAD/annotation/"
-  ),
-  "month7" = list(
-    fig_dir = "C:/Users/david/Documents/Research/PhD/scRNAseq/analysis/7_months/cellbender_analysis/FPR_0.0_MAD/qc/",
-    data_dir = "C:/Users/david/Documents/Research/PhD/scRNAseq/analysis/7_months/cellbender_analysis/FPR_0.0_MAD/data/",
-    annot_dir = "C:/Users/david/Documents/Research/PhD/scRNAseq/analysis/7_month/cellbender_analysis/FPR_0.0_MAD/annotation/"
-  ),
-  "month18" = list(
-    fig_dir = "C:/Users/david/Documents/Research/PhD/scRNAseq/analysis/18_months/cellbender_analysis/FPR_0.0_MAD/qc/",
-    data_dir = "C:/Users/david/Documents/Research/PhD/scRNAseq/analysis/18_months/cellbender_analysis/FPR_0.0_MAD/data/",
-    annot_dir = "C:/Users/david/Documents/Research/PhD/scRNAseq/analysis/18_months/cellbender_analysis/FPR_0.0_MAD/annotation/"
-  )
-)
-list2env(timepoint_dirs[[selected_timepoint]], envir = environment())
+fig_dir = "C:/Users/david/Documents/Research/PhD/scRNAseq/analysis_old/integrated/cellbender_analysis/FPR_0.0_MAD/clustering"
+data_dir = "C:/Users/david/Documents/Research/PhD/scRNAseq/analysis_old/integrated/cellbender_analysis/FPR_0.0_MAD/data"
+annot_dir = "C:/Users/david/Documents/Research/PhD/scRNAseq/analysis_old/integrated/cellbender_analysis/FPR_0.0_MAD/annotation"
 
 # Create directories to save results if they don't already exist:
-dirs = c(annot_dir, data_dir, fig_dir)
+dirs_to_make = c(
+  annot_dir, 
+  data_dir, 
+  fig_dir)
 
-for (dir in dirs) {
-  if (!dir.exists(dir)) { dir.create(dir,
-                                     recursive=TRUE) }
-}
-
-
-seurat_umap_sct = qs_read(paste0(data_dir,''))
+walk(dirs_to_make, ~dir.create(.x, recursive = TRUE, showWarnings = FALSE))
 
 
 
+integrated_seurat = qs_read(file.path(data_dir,'integrated_seurat_annotated.qs'), nthreads=nthreads)
 
 
 
 
-
-
-
-# clusters 26 is made up of one condition.
-# Will treat individual values as avg and max to easily bind rows to top10.conserved
-topc26 = conserved.pos.markers[conserved.pos.markers$cluster_id == 26,] %>%
-  mutate(avg_fc = ctrl_avg_log2FC,
-         max_adj_pval = ctrl_p_val_adj,
-         avg.pct.diff = ctrl_pct.1 - ctrl_pct.2) %>%
-  group_by(cluster_id) %>%
-  slice_max(order_by=tibble(avg_fc,avg.pct.diff,max_adj_pval),n=10)
-
-top10.conserved = rbind(top10.conserved, topc26)
 
 ## test subclustering t cells ----
-test = subset(DietSeurat(seurat_umap_sct, assays='RNA'), subset=(seurat_clusters == 1) | 
+test = subset(DietSeurat(integrated_seurat, assays='RNA'), subset=(seurat_clusters == 1) | 
                 (seurat_clusters == 2) | (seurat_clusters == 4) | 
                 (seurat_clusters == 10) | (seurat_clusters == 13) | 
                 (seurat_clusters == 20))
@@ -135,7 +102,7 @@ table(test$condition, test$SCT_snn_res.0.4)
 
 # subclustering cluster 19 and 25, epithelial cells ----
 # normalization
-epithelial = subset(DietSeurat(seurat_umap_sct, assays='RNA'), subset=(seurat_clusters == 19) | 
+epithelial = subset(DietSeurat(integrated_seurat, assays='RNA'), subset=(seurat_clusters == 19) | 
                       (seurat_clusters == 25))
 
 epithelial = SplitObject(epithelial, split.by='sample')
@@ -160,6 +127,10 @@ rm(sct_results)
 # # Variable features lost/unset after merging transformed objects. Need to set again.
 # # should do this according to https://github.com/satijalab/seurat/issues/2814
 VariableFeatures(epithelial[["SCT"]]) = rownames(epithelial[["SCT"]]@scale.data)
+
+
+
+
 
 epithelial = RunPCA(epithelial, npcs=50)
 
@@ -199,13 +170,98 @@ epithelial = FindNeighbors(epithelial, dims=1:50)
 epithelial = FindClusters(object=epithelial, resolution=c(0.1,0.4,0.8,1.0,1.2))
 epithelial = RunUMAP(epithelial, dims=1:50, reduction='pca')
 
-qs_save(epithelial,paste0(data_dir,'epithelial_19&25_umap_sct.qs'),nthreads=2)
+# qs_save(epithelial,paste0(data_dir,'epithelial_19&25_umap_sct.qs'),nthreads=2)
 
-Idents(epithelial) = 'RNA_snn_res.0.4'
+epithelial = qs_read(file.path(data_dir,'epithelial.qs'), nthreads=2)
+
 DimPlot(epithelial,
-        reduction='umap',
+        reduction='tsne_harmony',
+        group.by='subtype',
         label=TRUE,
         shuffle=TRUE)
+
+DimPlot(subset(epithelial,subset=(timepoint=='wk10')&(condition=='pb')),
+        reduction='umap_harmony',
+        group.by='subtype',
+        split.by = 'sample',
+        label=TRUE,
+        shuffle=TRUE)
+
+FeaturePlot(epithelial,
+        features = c('Muc1'),
+        # split.by ='condition',
+        split.by ='timepoint',
+        slot='scale.data',
+        # slot='data',
+        reduction='umap_harmony',
+        min.cutoff='q10',
+        max.cutoff='q50',
+        cols=viridis(256)) &
+  DarkTheme()
+
+
+# Check presence of mammary stem / progenitor / bipotent markers in epithelial ----
+mammary_markers = list(
+  stem_basal = c(
+    'Krt5','Krt14','Krt17','Trp63','Acta2','Myh11','Cnn1','Oxtr',
+    'Cd44','Lgr5','Lgr6','Procr','Bmi1','Itga6','Itgb1','Cd24a',
+    'Sox9','Nrg1','Lrp5','Axin2','Wnt5a','Wnt10a','Tspan8','Snai2',
+    'Vim','Zeb1','Zeb2','Twist1','Twist2', 'Id1', 'Sox2', 'Aldha1a3',
+    'Aldh1a1','Spy1'
+  ),
+  basal_myoepithelial = c(
+    'Acta2','Myh11','Mylk','Oxtr','Krt5','Krt14','Krt17','Trp63','Tagln',
+    'Cnn1','Sparc','Myl9'
+  ),
+  luminal_progenitor = c(
+    'Kit','Aldh1a3','Elf5','Krt8','Krt18','Krt19','Itgb3','Cd14',
+    'Hey1','Notch1','Notch2','Sox10','Tspan8','Cd61','Csn2','Wap',
+    'Lalba','Foxc1','Foxm1','Mki67','Top2a'
+  ),
+  mature_luminal.hs = c(
+    'Esr1','Pgr','Foxa1','Prom1','Areg','Prlr','Gata3','Tbx3',
+    'Cited1','Mfge8','Ltf','Muc1','Sca1','Wnt4','Tnfsf11'
+  ),
+  bipotent = c(
+    'Procr','Bmi1','Lgr5','Axin2','Sox9','Lrp5','Tspan8','Cd24a',
+    'Itga6','Itgb1','Krt5','Krt8','Krt14','Krt18','Ybx1','Eno1'
+  )
+)
+
+# Use default assay (likely SCT after subclustering)
+all_genes = rownames(epithelial)
+cat('Default assay:', DefaultAssay(epithelial),
+    '| n genes:', length(all_genes), '\n\n')
+
+# Exact-match check per category
+marker_presence = imap(mammary_markers, function(genes, category) {
+  present = intersect(genes, all_genes)
+  missing = setdiff(genes, all_genes)
+  cat('---', category, '---\n')
+  cat('  present (', length(present), '/', length(genes), '):',
+      paste(present, collapse=', '), '\n')
+  cat('  missing:', paste(missing, collapse=', '), '\n\n')
+  tibble(category=category, gene=genes, present=genes %in% all_genes)
+}) %>% bind_rows()
+
+# Fuzzy grep — catch case differences, family members (e.g. Krt5a, Wnt5b)
+all_markers_unique = unique(unlist(mammary_markers))
+grep_hits = map(all_markers_unique, function(g) {
+  hits = grep(paste0('^', g, '$|^', g, '[0-9a-z]*$'),
+              all_genes, ignore.case=TRUE, value=TRUE)
+  if (length(hits)) tibble(query=g, hit=hits) else NULL
+}) %>% compact() %>% bind_rows()
+
+print(grep_hits, n=Inf)
+
+# Sanity-check across all assays in case markers live in RNA but not SCT
+walk(Assays(epithelial), function(a) {
+  hits = intersect(all_markers_unique, rownames(epithelial[[a]]))
+  cat('assay', a, ':', length(hits), '/', length(all_markers_unique),
+      'markers present\n')
+})
+
+
 
 table(epithelial$condition, epithelial$RNA_snn_res.0.4)
 # 0   1   2   3   4
@@ -357,7 +413,7 @@ epithelial.top10.conserved = epithelial.conserved.markers %>%
 # FindMarkers() for clusters still in question ----
 ## Cd4 T cells
 # cluster 4 vs 1 and 10
-cd4_tcells = FindMarkers(seurat_umap_sct,
+cd4_tcells = FindMarkers(integrated_seurat,
                          ident.1 = 4,
                          ident.2 = c(1,10)) 
 
@@ -379,7 +435,7 @@ cd4_tcells = cd4_tcells %>%
 write.csv(cd4_tcells,'annotation/cd4_tcells_4vs1and10.csv',row.names=FALSE)
 
 # cluster 10 vs 1 and 4
-cd4_tcells = FindMarkers(seurat_umap_sct,
+cd4_tcells = FindMarkers(integrated_seurat,
                          ident.1 = 10,
                          ident.2 = c(1,4)) 
 
@@ -402,7 +458,7 @@ write.csv(cd4_tcells,'annotation/cd4_tcells_10vs1and4.csv',row.names=FALSE)
 
 #B cells
 # cluster 3 vs 0,11,and 16
-bcells = FindMarkers(seurat_umap_sct,
+bcells = FindMarkers(integrated_seurat,
                      ident.1 = 3,
                      ident.2 = c(0,11,16)) 
 
@@ -425,7 +481,7 @@ write.csv(bcells,'annotation/bcells_cluster3.csv',row.names=FALSE)
 
 
 # cluster 11 vs 0,3,and 16
-bcells = FindMarkers(seurat_umap_sct,
+bcells = FindMarkers(integrated_seurat,
                      ident.1 = 11,
                      ident.2 = c(0,3,16)) 
 
@@ -448,7 +504,7 @@ write.csv(bcells,'annotation/bcells_cluster11.csv',row.names=FALSE)
 
 
 # cluster 16 vs 0,3,and 11
-bcells = FindMarkers(seurat_umap_sct,
+bcells = FindMarkers(integrated_seurat,
                      ident.1 = 16,
                      ident.2 = c(0,3,11)) 
 
@@ -473,7 +529,7 @@ write.csv(bcells,'annotation/bcells_cluster16.csv',row.names=FALSE)
 
 ## adipocytes
 # cluster 21 vs 7
-adipocytes = FindMarkers(seurat_umap_sct,
+adipocytes = FindMarkers(integrated_seurat,
                          ident.1 = 21,
                          ident.2 = c(7))
 
@@ -496,7 +552,7 @@ write.csv(adipocytes,'annotation/adipocytes_cluster21.csv',row.names=FALSE)
 
 
 # cluster 7 vs 21
-adipocytes = FindMarkers(seurat_umap_sct,
+adipocytes = FindMarkers(integrated_seurat,
                          ident.1 = 7,
                          ident.2 = 21)
 
@@ -520,7 +576,7 @@ write.csv(adipocytes,'annotation/adipocytes_cluster7.csv',row.names=FALSE)
 
 ## fibroblasts
 # clusters 17 vs 6 and 24
-fibroblasts = FindMarkers(seurat_umap_sct,
+fibroblasts = FindMarkers(integrated_seurat,
                           ident.1 = 17,
                           ident.2 = c(6,24))
 
@@ -542,7 +598,7 @@ fibroblasts = fibroblasts %>%
 write.csv(fibroblasts,'annotation/fibroblasts_cluster17.csv',row.names=FALSE)
 
 # cluster 24 vs 6 and 17
-fibroblasts = FindMarkers(seurat_umap_sct,
+fibroblasts = FindMarkers(integrated_seurat,
                           ident.1 = 24,
                           ident.2 = c(6,17))
 
@@ -564,9 +620,9 @@ fibroblasts = fibroblasts %>%
 write.csv(fibroblasts,'annotation/schwann_cells_cluster24.csv',row.names=FALSE)
 
 
-## epithelial
+## epithelial ----
 # clusters 23 vs 18 and 24
-epithelial = FindMarkers(seurat_umap_sct,
+epithelial = FindMarkers(integrated_seurat,
                          ident.1 = 23,
                          ident.2 = c(18,24))
 
@@ -589,7 +645,7 @@ write.csv(epithelial,'annotation/epithelial_cluster23.csv',row.names=FALSE)
 
 
 # clusters 18 vs 23 and 24
-epithelial = FindMarkers(seurat_umap_sct,
+epithelial = FindMarkers(integrated_seurat,
                          ident.1 = 18,
                          ident.2 = c(23,24))
 
@@ -612,16 +668,178 @@ write.csv(epithelial,'annotation/epithelial_cluster18.csv',row.names=FALSE)
 
 
 
-## endothelial
+## endothelial ----
 
-# myeloid
+# myeloid ----
 
-rownames(seurat_umap_sct)
+myeloid = subcluster_by_celltype(
+  integrated_seurat,
+  celltype_col    = "major_celltype",
+  celltype_values = "Myeloid",
+  sct_mode        = "per_sample",
+  split_by        = "sample",
+  batch_var       = "batch",
+  vars_to_regress = c("cc.difference", "percent.mt"),
+  resolutions     = c(0.1, 0.2, 0.4, 0.6, 0.8, 1.0, 1.2),
+  seed            = seed
+)
+
+myeloid <- subset(integrated_seurat, subset = major_celltype == "Myeloid")
+myeloid <- DietSeurat(myeloid, assays = "RNA")
+gc()
+
+options(future.globals.maxSize = 4 * 1024^3) # set limit to 4 GB
+tmp <- myeloid
+tmp[['RNA']] <- split(
+  tmp[['RNA']],
+  f = tmp$sample
+)
+
+myeloid <- SCTransform(tmp,
+                      vars.to.regress = c('percent.mt', 'cc.difference'), # https://satijalab.org/seurat/articles/cell_cycle_vignette.html
+                      variable.features.n = 3000
+                )
+rm(tmp) # free up memory
+gc()
+
+myeloid <- RunPCA(myeloid, assay = "SCT", npcs = 50)
+test <- check_pc_contamination(myeloid, species='mouse', top_n=30)
+test$flagged_pcs
+test$loadings
+test$summary
+
+elbow <- calc_pcs_elbow(myeloid)
+plot_pcs_elbow(elbow)
+
+DimPlot(myeloid, reduction = "pca", group.by = "timepoint", split.by = 'Phase')
+FeaturePlot(myeloid, reduction = "pca", features = c('percent.mt','S.Score','G2M.Score'),
+             ncol=3,
+             # split.by = 'condition',
+             # slot='scale.data',
+             # slot='data',
+            # min.cutoff='q10',
+            # max.cutoff='q50',
+            cols=viridis(256)) &
+  DarkTheme()
+
+resolutions = c(0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.8, 1)
+
+myeloid <- FindNeighbors(myeloid, reduction = "pca", dims = 1:50)
+resolutions = c(0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.8, 1)
+myeloid <- FindClusters(myeloid, resolution = resolutions, algorithm = 4)
+myeloid <- RunUMAP(myeloid, reduction = "pca", dims = 1:50)
+
+
+myeloid <- RunHarmony(myeloid, 'batch')
+myeloid <- FindNeighbors(myeloid, reduction = "harmony", dims = 1:50,
+                         graph.name=c('harmony_nn','harmony_snn'))
+myeloid <- FindClusters(myeloid, resolution = resolutions, algorithm = 4, graph.name = "harmony_snn")
+myeloid <- RunUMAP(myeloid, reduction = "harmony", dims = 1:50, reduction.name = "umap_harmony")
+
+# qs_save(myeloid, file.path(data_dir, "myeloid.qs"), nthreads = nthreads)
+myeloid <- qs_read(file.path(data_dir, "myeloid.qs"), nthreads = nthreads)
+
+DimPlot(subset(myeloid, subset = timepoint == "wk3"),
+        reduction = "umap_harmony",
+        group.by  = "sample",
+        # split.by = 'condition'
+        # label     = TRUE,
+        repel     = TRUE,
+        shuffle = TRUE
+      )
+
+DimPlot(myeloid,
+        reduction = "umap_harmony",
+        group.by  = "condition",
+        # split.by = 'condition'
+        # label     = TRUE,
+        repel     = TRUE,
+        shuffle = TRUE
+      )
+
+
+
+DimPlot(myeloid,
+        reduction = "umap_harmony",
+        group.by  = "celltype",
+        # split.by = 'timepoint',
+        repel     = TRUE,
+        shuffle = TRUE
+      )
+
+DimPlot(myeloid,
+        reduction = "umap",
+        group.by  = "timepoint",
+        # split.by = 'timepoint',
+        repel     = TRUE,
+        shuffle = TRUE
+      )
+
+
+
+FeaturePlot(myeloid, features = c('percent.mt'),
+            reduction='umap_harmony',
+            # min.cutoff='q10',
+            # max.cutoff='q50',
+            ncol=3,
+            cols=viridis(256)) &
+  DarkTheme()
+
+
+VlnPlot(myeloid, features = c("nFeature_RNA", "nCount_RNA", "percent.mt",''),
+        group.by = "harmony_snn_res.0.3", ncol = 3) &
+  theme(legend.position = "none")
+
+
+clustree::clustree(myeloid, prefix = 'harmony_snn_res.') +
+  guides(edge_colour = "none")
+
+
+if (!dir.exists(file.path(fig_dir, "myeloid"))) {
+  dir.create(file.path(fig_dir, "myeloid"), recursive = TRUE)
+}
+
+DimPlot(
+  myeloid,
+  reduction = "umap_harmony",
+  group.by  = "harmony_snn_res.1",
+  label     = TRUE,
+  repel     = TRUE,
+  shuffle   = TRUE
+)
+
+
+
+DimPlot(
+  myeloid,
+  reduction = "umap_harmony",
+  group.by  = "harmony_snn_res.0.25",
+  label     = TRUE,
+  repel     = TRUE,
+  shuffle   = TRUE
+)
+
+
+ggsave(
+  file.path(fig_dir, "myeloid", "umap_harmony_res.0.4.png"),
+  dpi = 320, width = 10, height = 8
+)
+
+myeloid = JoinLayers(myeloid,assay='RNA')
+gc()
+
+
+
+
+
+
+
+
 
 
 # Rename cluster #'s to cell type annotations ----
-Idents(seurat_umap_sct) = 'SCT_snn_res.0.8'
-seurat_umap_sct = RenameIdents(seurat_umap_sct,
+Idents(integrated_seurat) = 'SCT_snn_res.0.8'
+integrated_seurat = RenameIdents(integrated_seurat,
                                '0' = 'B cells',
                                '1' = 'CD4+ T cells',
                                '2' = 'CD8+ T cells',
@@ -652,7 +870,7 @@ seurat_umap_sct = RenameIdents(seurat_umap_sct,
                                '27' = 'Erythroid cells'# mature RBCs
 )
 
-# seurat_umap_sct = RenameIdents(seurat_umap_sct,
+# integrated_seurat = RenameIdents(integrated_seurat,
 #                                  '0' = 'B cells',
 #                                  '1' = 'CD4+ T cells',
 #                                  '2' = 'CD8+ T cells',
@@ -683,13 +901,13 @@ seurat_umap_sct = RenameIdents(seurat_umap_sct,
 #                                  '27' = 'Erythroid cells')
 
 # assign cluster names to meta data
-seurat_umap_sct$celltype = Idents(seurat_umap_sct)
-Idents(seurat_umap_sct) = 'celltype'
+integrated_seurat$celltype = Idents(integrated_seurat)
+Idents(integrated_seurat) = 'celltype'
 
 if (!dir.exists(paste0(annot_dir,'figures/'))) { dir.create(paste0(annot_dir,'figures/'),
                                                             recursive=TRUE) }
 
-DimPlot(seurat_umap_sct, 
+DimPlot(integrated_seurat, 
         group.by = 'celltype',
         label=T,
         label.size=6,
@@ -697,22 +915,22 @@ DimPlot(seurat_umap_sct,
         shuffle=T)
 ggsave(paste0(annot_dir,'figures/annotated_seurat_res.0.8.png'), dpi=320, width=20, height=20)
 
-# qs_save(seurat_umap_sct, paste0(data_dir,'annotated_seurat_res.0.8.qs'),nthreads=2)
-qs_save(seurat_umap_sct, paste0(data_dir,'integrated_seurat_annotated.qs'),nthreads=2)
+# qs_save(integrated_seurat, paste0(data_dir,'annotated_seurat_res.0.8.qs'),nthreads=2)
+qs_save(integrated_seurat, paste0(data_dir,'integrated_seurat_annotated.qs'),nthreads=2)
 
 # plot qc metrics for cell-annotated clusters
 if (!dir.exists(paste0(fig_dir,'celltype/'))) { dir.create(paste0(fig_dir,'celltype/'),
                                                            recursive=TRUE) }
 
-plot_umaps(seurat_umap_sct, 
+plot_umaps(integrated_seurat, 
            resolution='celltype',
            directory=fig_dir)
 
-umap_clustering_qc(seurat_umap_sct, 
+umap_clustering_qc(integrated_seurat, 
                    resolution='celltype',
                    directory=fig_dir)
 
 # shrink seurat object in preparation of DE analysis
-de_seurat = DietSeurat(seurat_umap_sct, assays='RNA', layers=c('counts'))
+de_seurat = DietSeurat(integrated_seurat, assays='RNA', layers=c('counts'))
 qs_save(de_seurat, paste0(data_dir,'de_seurat_annotated.qs'),nthreads=2)
 

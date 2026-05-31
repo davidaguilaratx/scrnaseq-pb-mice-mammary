@@ -1,0 +1,61 @@
+﻿array_index,sample,pool_number,timepoint,Sample group,expected-cells,total-droplets-included,epochs,learning-rate
+0,21,NA,3 week mammary gland,Control,3000,6000,300,0.000025
+1,22,NA,3 week mammary gland,Control,4000,7000,150,0.00005
+2,23,NA,3 week mammary gland,Control,4000,7000,150,0.00005
+3,24,NA,3 week mammary gland,Control,2000,4000,150,0.00005
+4,25,NA,3 week mammary gland,Control,5000,8000,150,0.000025
+5,26,NA,3 week mammary gland,Control,5000,8000,300,0.000025
+6,27,NA,3 week mammary gland,Pb,6000,10000,150,0.000025
+7,28,NA,3 week mammary gland,Pb,4000,7000,150,0.000025
+8,29,NA,3 week mammary gland,Pb,5000,8000,150,0.00005
+9,30,NA,3 week mammary gland,Pb,6000,10000,150,0.000025
+10,31,NA,3 week mammary gland,Pb,3000,6000,300,0.00005
+11,32,NA,3 week mammary gland,Pb,3000,6000,300,0.00005
+12,1,1,7  mo. mammary gland,Control,10000,30000,150,0.0000125
+13,2,1,7  mo. mammary gland,Control,5000,20000,150,0.000025
+14,3,1,7  mo. mammary gland,Control,7000,30000,150,0.000025
+15,4,1,7  mo. mammary gland,Control,8000,30000,150,0.0000125
+16,5,1,7  mo. mammary gland,Pb,8000,30000,150,0.000025
+17,6,1,7  mo. mammary gland,Pb,7000,30000,150,0.000025
+18,7,1,7  mo. mammary gland,Pb,9000,30000,150,0.000025
+19,8,1,7  mo. mammary gland,Pb,8000,30000,150,0.0000125
+20,9,1,18.4 week dam mammary gland,Pb,8000,30000,150,0.0000125
+21,10,1,18.4 week dam mammary gland,Pb,7000,25000,150,0.000025
+22,11,1,18.4 week dam mammary gland,Pb,7000,30000,150,0.0000125
+23,12,1,18.4 week dam mammary gland,Pb,5000,25000,150,0.000025
+24,13,1,18.4 week dam mammary gland,Control,7000,30000,150,0.0000125
+25,14,1,18.4 week dam mammary gland,Control,8000,30000,150,0.0000125
+26,15,1,18.4 week dam mammary gland,Control,8000,30000,150,0.0000125
+27,16,1,18.4 week dam mammary gland,Control,5000,25000,150,0.000025
+28,17,2,10 week testes,Control,15000,50000,150,0.0000125
+29,18,2,10 week testes,Control,20000,50000,150,0.0000125
+30,19,2,10 week testes,Control,15000,50000,150,0.0000125
+31,20,2,10 week testes,Control,15000,50000,150,0.0000125
+32,21,2,10 week testes,Pb,14000,50000,150,0.0000125
+33,22,2,10 week testes,Pb,14000,50000,150,0.0000125
+34,23,2,10 week testes,Pb,14000,50000,150,0.0000125
+35,24,2,10 week testes,Pb,14000,50000,150,0.0000125
+36,25,2,18  mo. mammary gland,Control,6000,30000,150,0.0000125
+37,26,2,18  mo. mammary gland,Control,4000,30000,300,0.00000625
+38,27,2,18  mo. mammary gland,Control,6000,35000,150,0.0000125
+39,28,2,18  mo. mammary gland,Control,6000,30000,150,0.0000125
+40,29,2,18  mo. mammary gland,Pb,5000,30000,150,0.0000125
+41,30,2,18  mo. mammary gland,Pb,4000,35000,150,0.000025
+42,31,2,18  mo. mammary gland,Pb,6000,30000,150,0.000025
+43,32,2,18  mo. mammary gland,Pb,5000,30000,150,0.000025
+44,33,3,10  wk. mammary gland,Control,6000,30000,150,0.0000125
+45,34,3,10  wk. mammary gland,Control,6000,25000,150,0.000025
+46,35,3,10  wk. mammary gland,Control,5000,25000,150,0.000025
+47,36,3,10  wk. mammary gland,Control,7000,25000,150,0.000025
+48,37,3,10  wk. mammary gland,Pb,5500,20000,150,0.000025
+49,38,3,10  wk. mammary gland,Pb,5500,30000,150,0.000025
+50,39,3,10  wk. mammary gland,Pb,7500,30000,150,0.000025
+51,40,3,10  wk. mammary gland,Pb,8000,25000,150,0.000025
+52,41,3,10  wk. mammary gland,AO,6000,25000,150,0.000025
+53,42,3,10  wk. mammary gland,AO,5000,25000,150,0.000025
+54,43,3,10  wk. mammary gland,AO,7000,25000,150,0.0000125
+55,44,3,10  wk. mammary gland,AO,6500,25000,150,0.0000125
+56,45,3,10  wk. mammary gland,AO-Pb,8000,25000,150,0.0000125
+57,46,3,10  wk. mammary gland,AO-Pb,8000,30000,300,0.00000625
+58,47,3,10  wk. mammary gland,AO-Pb,5000,25000,150,0.0000125
+59,48,3,10  wk. mammary gland,AO-Pb,7000,30000,150,0.000025

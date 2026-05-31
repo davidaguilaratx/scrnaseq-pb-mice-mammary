@@ -552,6 +552,8 @@ co2 # 12
 pcs = min(co1, co2)
 pcs 
 # [1] 12
+# will use all 50 PCs for downstream analysis since theoretically, 
+# they are all useful when using SCTransform normalization.
 
 # Create a dataframe to visualize percent variation captured by PCs
 plot_df = data.frame(pct = pct, 
@@ -1550,7 +1552,7 @@ sce_singlets <- sce[, sce$scDblFinder.class == "singlet"]
 qs_save(sce_singlets, paste0(data_dir_integrated, 'sce_singlets.qs'), nthreads=nthreads)
 gc()
 
-#### Full reprocessing of normalization and clustering of singlets for second round of doublet detection (like She et al. 2025) ----
+#### Full reprocessing of normalization and clustering of singlets for second round of doublet detection (like She et al. 2025,DOI: 10.1016/j.csbj.2025.01.009) ----
 seu_singlets <- as.Seurat(sce_singlets, counts='counts', data=NULL)
 seu_singlets_split = SplitObject(seu_singlets, split.by = "sample")
 gc() # save RAM

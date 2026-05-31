@@ -47,7 +47,7 @@ output_dir="/nfs/turbo/sph-colacino/aguilada/scRNAseq/cellbender/cellbender_h5_o
 mkdir -p $output_dir
 
 # cell bender parameters, expected-cells and total-droplets-included, for each sample
-csv_file="/nfs/turbo/sph-colacino/aguilada/scRNAseq/cellbender_parameters.csv"
+csv_file="/nfs/turbo/sph-colacino/aguilada/scRNAseq/analysis/configs/cellbender_parameters.csv"
 
 # Extract parameters from cellbender_parameters.csv
 line=$(sed -n "$((SLURM_ARRAY_TASK_ID + 2))p" $csv_file)
